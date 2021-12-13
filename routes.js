@@ -33,7 +33,7 @@ router.get('/users', authenticateUser, asyncHandler(async(req,res) => {
   router.post('/users', asyncHandler(async(req,res) => {
     try {
       await User.create(req.body);
-      res.status(201).json({message: "Account created"}).location('/').end();
+      res.status(201).location('/').end();
     } catch (error) {
       if (error.name === 'SequelizeValidationError' || error.name === 'SequelizeUniqueConstraintError') {
         const errors = error.errors.map(err => err.message);
@@ -101,32 +101,34 @@ router.get('/users', authenticateUser, asyncHandler(async(req,res) => {
     const course = await Course.findByPk(req.params.id);
     const userId = await Course.findByPk(req.params.userId);
     if (course) {
-        try {
-            Course.update({
-                title: req.body.title,
-                description: req.body.description,
-                estimatedTime: req.body.estimatedTime,
-                materialsNeeded: req.body.materialsNeeded,
-            }, 
-            {   where: {id: req.params.id} });
-            await course.save();
-            res.status(204).json({message: "Course updated"}).end();
-
-        } 
-        catch (error) {
-            if (error.name === 'SequelizeValidationError' || error.name === 'SequelizeUniqueConstraintError') {
-                const errors = error.errors.map(err => err.message);
-                res.status(400).json({errors});
-              } else if (userId !== authenticateUser) {
-                res.status(403).json({message: "You cannot update a course that you don't own."});
-              }
-              else {
-                throw error;
-              }
-        }
+        if (req.body.description && req.body.title) {
+            try {
+                Course.update({
+                    title: req.body.title,
+                    description: req.body.description,
+                    estimatedTime: req.body.estimatedTime,
+                    materialsNeeded: req.body.materialsNeeded,
+                }, 
+                {   where: {id: req.params.id} });
+                await course.save();
+                res.status(204).end();
+            } catch (error) {
+                if (error.name === 'SequelizeValidationError' || error.name === 'SequelizeUniqueConstraintError') {
+                    const errors = error.errors.map(err => err.message);
+                    res.status(400).json({errors});
+                } else if (userId !== authenticateUser) {
+                    res.status(403).json({message: "You cannot update a course that you don't own."});
+                } else {
+                    throw error;
+                    }
+                }
+        
     } else {
-        res.status(404).json({message: "The course that you are trying to update does not exist."});
-    }
+        res.status(400).json({message: "Please enter a title and a description."});
+    } 
+} else {
+    res.status(404).json({message: "The course that you are trying to update does not exist."});
+}
   }));
 
 
