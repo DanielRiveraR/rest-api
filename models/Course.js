@@ -14,10 +14,26 @@ module.exports = (sequelize) => {
       title: {
         type: DataTypes.STRING,
         allowNull: false,
+        validate: {
+            notNull: {
+                msg: 'Please provide a title for the course.'
+            },
+            notEmpty: {
+                msg: 'Please provide a title for the course.'
+            }
+        }
       },
       description: {
-        type: DataTypes.Text,
+        type: DataTypes.TEXT,
         allowNull: false,
+        validate: {
+            notNull: {
+                msg: 'Please provide a description for the course.'
+            },
+            notEmpty: {
+                msg: 'Please provide a descrition for the course.'
+            }
+        }
       },
       estimatedTime: {
         type: DataTypes.STRING,
@@ -34,7 +50,12 @@ module.exports = (sequelize) => {
     }, { sequelize });
   
     Course.associate = (models) => {
-        Course.belongsTo(models.User);
+        Course.belongsTo(models.User, { 
+            as: 'Enrolled',
+            foreignKey: {
+               fieldName: 'userId',
+            }
+        });
     };
   
     return Course;

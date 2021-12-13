@@ -10,5 +10,5 @@
     "DB_ENABLE_LOGGING": "false",
     "ENABLE_GLOBAL_ERROR_LOGGING": "false"
   },
-  "ext": "js"
+  "ext": "js json css styl jade"
 }
