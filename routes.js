@@ -53,7 +53,7 @@ router.get('/users', authenticateUser, asyncHandler(async(req,res) => {
             as: 'Enrolled',
         }], 
             attributes: {
-                exclude: ['createAt', 'updateAt']
+                exclude: ['createdAt', 'updatedAt']
             }, 
         });
       res.status(200).json(courses);
@@ -62,14 +62,13 @@ router.get('/users', authenticateUser, asyncHandler(async(req,res) => {
 
 
   router.get('/courses/:id', asyncHandler(async(req,res) => {
-    const course = await Course.findByPk(req.params.id, {
+    const course = await Course.findByPk(req.params.id, { attributes: {
+        exclude: ['createdAt', 'updatedAt']
+    }, 
         include: [{
             model: User,
             as: 'Enrolled',
         }], 
-        attributes: {
-            exclude: ['createAt', 'updateAt']
-        }, 
     });
     if (course) {
       res.status(200).json({course});
@@ -100,7 +99,7 @@ router.get('/users', authenticateUser, asyncHandler(async(req,res) => {
 
   router.put('/courses/:id', authenticateUser, asyncHandler(async(req,res) => {
     const course = await Course.findByPk(req.params.id);
-
+    const userId = await Course.findByPk(req.params.userId);
     if (course) {
         try {
             Course.update({
@@ -113,11 +112,15 @@ router.get('/users', authenticateUser, asyncHandler(async(req,res) => {
             await course.save();
             res.status(204).json({message: "Course updated"}).end();
 
-        } catch (error) {
+        } 
+        catch (error) {
             if (error.name === 'SequelizeValidationError' || error.name === 'SequelizeUniqueConstraintError') {
                 const errors = error.errors.map(err => err.message);
                 res.status(400).json({errors});
-              } else {
+              } else if (userId !== authenticateUser) {
+                res.status(403).json({message: "You cannot update a course that you don't own."});
+              }
+              else {
                 throw error;
               }
         }
@@ -129,10 +132,14 @@ router.get('/users', authenticateUser, asyncHandler(async(req,res) => {
 
   router.delete('/courses/:id', authenticateUser, asyncHandler(async(req,res) => {
     const course = await Course.findOne({id: req.params.id});
+    const user = await User.findByPk(req.currentUser.id);
     if (course) {
       Course.destroy({   where: {id: req.params.id} });  
       res.status(204).json({message: 'Course deleted.'}).end();
-    } else {
+    } else if (user !== authenticateUser) {
+        res.status(403).json({message: "You cannot delete a course that you don't own."});
+      }
+    else {
         res.status(404).json({message: "The course that you are trying to delete does not exist."});
     }
   }));
