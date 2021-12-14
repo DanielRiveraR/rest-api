@@ -60,7 +60,7 @@ router.get('/users', authenticateUser, asyncHandler(async(req,res) => {
   }));
 
 
-
+  //This route shows a course using its id. 
   router.get('/courses/:id', asyncHandler(async(req,res) => {
     const course = await Course.findByPk(req.params.id, { attributes: {
         exclude: ['createdAt', 'updatedAt']
@@ -77,7 +77,7 @@ router.get('/users', authenticateUser, asyncHandler(async(req,res) => {
     }
   }));
 
-
+  // This route create a new course 
   router.post('/courses', authenticateUser, asyncHandler(async(req,res) => {
     try {
         const course = await Course.create({
@@ -96,33 +96,39 @@ router.get('/users', authenticateUser, asyncHandler(async(req,res) => {
     } 
   }));
 
-
+  //This route updates a course only if the current user owns it.
   router.put('/courses/:id', authenticateUser, asyncHandler(async(req,res) => {
     const course = await Course.findByPk(req.params.id);
-    const userId = await Course.findByPk(req.params.userId);
-    if (course) {
-        if (req.body.description && req.body.title) {
-            try {
-                Course.update({
-                    title: req.body.title,
-                    description: req.body.description,
-                    estimatedTime: req.body.estimatedTime,
-                    materialsNeeded: req.body.materialsNeeded,
-                }, 
-                {   where: {id: req.params.id} });
-                await course.save();
-                res.status(204).end();
-            } catch (error) {
-                if (error.name === 'SequelizeValidationError' || error.name === 'SequelizeUniqueConstraintError') {
-                    const errors = error.errors.map(err => err.message);
-                    res.status(400).json({errors});
-                } else if (userId !== authenticateUser) {
-                    res.status(403).json({message: "You cannot update a course that you don't own."});
-                } else {
-                    throw error;
-                    }
-                }
-        
+    const user = await User.findByPk(req.currentUser.id);
+
+    if (course && user) {
+        if (req.body.description && req.body.title) { 
+            if (req.currentUser.id === req.params.userId) {
+                try {
+                    Course.update({
+                        title: req.body.title,
+                        description: req.body.description,
+                        estimatedTime: req.body.estimatedTime,
+                        materialsNeeded: req.body.materialsNeeded,
+                    }, 
+                    {   where: {id: req.params.id} });
+                    await course.save();
+                    res.status(204).end();
+                    
+                        
+                        
+                } catch (error) {
+                    if (error.name === 'SequelizeValidationError' || error.name === 'SequelizeUniqueConstraintError') {
+                        const errors = error.errors.map(err => err.message);
+                        res.status(400).json({errors});
+                        } else {
+                            throw error;
+                        }
+                    } 
+
+            } else {
+                res.status(403).json({message: "You can't update a course that you didn't create."});
+            }
     } else {
         res.status(400).json({message: "Please enter a title and a description."});
     } 
@@ -132,18 +138,22 @@ router.get('/users', authenticateUser, asyncHandler(async(req,res) => {
   }));
 
 
+  //This route updates a course only if the current user owns it.
   router.delete('/courses/:id', authenticateUser, asyncHandler(async(req,res) => {
     const course = await Course.findOne({id: req.params.id});
     const user = await User.findByPk(req.currentUser.id);
-    if (course) {
-      Course.destroy({   where: {id: req.params.id} });  
-      res.status(204).json({message: 'Course deleted.'}).end();
-    } else if (user !== authenticateUser) {
-        res.status(403).json({message: "You cannot delete a course that you don't own."});
-      }
-    else {
+
+    if (course && user) {
+        if (req.currentUser.id === req.params.userId) {
+            Course.destroy({   where: {id: req.params.id} });  
+            res.status(204).json({message: 'Course deleted.'}).end();
+        } else {
+            res.status(403).json({message: "You can't delete a course that you didn't create."});
+        } 
+    } else {
         res.status(404).json({message: "The course that you are trying to delete does not exist."});
-    }
+        }
   }));
+  
 
   module.exports = router;
